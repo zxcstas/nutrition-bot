@@ -32,8 +32,8 @@ async def cmd_start(message: Message):
 
 <b>Команды:</b>
 /stats - сводка за сегодня
-/burned <число> - сколько калорий потратил
-/weight <число> - записать вес (в кг)
+/burned (число) - сколько калорий потратил
+/weight (число) - записать вес в кг
 /help - помощь"""
 
     await message.answer(welcome_text, parse_mode="HTML")
