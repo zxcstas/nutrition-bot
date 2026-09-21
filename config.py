@@ -12,6 +12,7 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str
+    db_password: str
 
     # Application
     debug: bool = False
