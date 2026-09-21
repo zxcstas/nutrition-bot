@@ -57,39 +57,35 @@ class NutritionParser:
 
     @staticmethod
     def parse_vision_response(response: Dict) -> Optional[NutritionInfo]:
-        """Parse Vision API response and extract nutrition info"""
+        """Parse Claude Vision API response and extract nutrition info"""
         try:
-            # Vision API might return text that needs to be parsed
-            # Adjust this based on actual token.club Vision API response format
-            if "text" in response:
-                text = response["text"]
-            elif "description" in response:
-                text = response["description"]
+            # Claude Messages API returns content in specific format
+            if "content" in response and len(response["content"]) > 0:
+                text = response["content"][0].get("text", "")
             else:
-                logger.error("Unknown Vision API response format")
+                logger.error("Unknown Claude Vision response format")
                 return None
 
-            # Try to extract KBJU values from text
-            calories = NutritionParser._extract_number(text, r'калор[ий]*[:\s]+(\d+\.?\d*)')
-            protein = NutritionParser._extract_number(text, r'белк[иов]*[:\s]+(\d+\.?\d*)')
-            fats = NutritionParser._extract_number(text, r'жир[ыов]*[:\s]+(\d+\.?\d*)')
-            carbs = NutritionParser._extract_number(text, r'углевод[ыов]*[:\s]+(\d+\.?\d*)')
-
-            if not calories:
-                logger.warning("Could not extract calories from vision response")
+            # Extract JSON from text
+            json_match = re.search(r'\{.*\}', text, re.DOTALL)
+            if not json_match:
+                logger.error("No JSON found in Claude Vision response")
                 return None
+
+            data = json.loads(json_match.group())
 
             return NutritionInfo(
-                description=text[:200],  # First 200 chars as description
-                calories=calories,
-                protein=protein or 0,
-                fats=fats or 0,
-                carbs=carbs or 0,
-                confidence="medium",
+                description=data.get("description", "Неизвестно"),
+                calories=float(data.get("calories", 0)),
+                protein=float(data.get("protein", 0)),
+                fats=float(data.get("fats", 0)),
+                carbs=float(data.get("carbs", 0)),
+                confidence=data.get("confidence", "medium"),
+                portion_size=data.get("portion_size"),
             )
 
         except Exception as e:
-            logger.error(f"Error parsing Vision response: {e}")
+            logger.error(f"Error parsing Claude Vision response: {e}")
             return None
 
     @staticmethod
