@@ -21,41 +21,68 @@ class TokenClubAPI:
 
     async def analyze_food_image(self, image_data: bytes) -> Optional[Dict[str, Any]]:
         """
-        Analyze food image using Vision API
+        Analyze food image using Claude Messages API with vision
         Returns nutrition information extracted from the image
         """
         try:
+            import base64
+
+            # Encode image to base64
+            image_base64 = base64.b64encode(image_data).decode('utf-8')
+
             async with aiohttp.ClientSession() as session:
-                # For tooken.club vision API, send image and get description
                 payload = {
-                    "model": "gpt-image-2",
-                    "prompt": "Analyze this food image and provide detailed nutrition information in Russian. "
-                             "Include: название блюда, калории, белки, жиры, углеводы, примерный вес порции.",
-                    "n": 1,
-                    "size": "1024x1024"
+                    "model": "claude-opus-5",
+                    "max_tokens": 1024,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": "image/jpeg",
+                                        "data": image_base64
+                                    }
+                                },
+                                {
+                                    "type": "text",
+                                    "text": """Проанализируй это фото еды и верни информацию о КБЖУ в JSON формате:
+{
+  "description": "название блюда",
+  "calories": число ккал,
+  "protein": число грамм,
+  "fats": число грамм,
+  "carbs": число грамм,
+  "portion_size": "примерный размер порции",
+  "confidence": "high/medium/low"
+}
+
+Отвечай только валидным JSON, без дополнительного текста."""
+                                }
+                            ]
+                        }
+                    ]
                 }
 
-                # Note: The actual API format may differ - adjust based on tooken.club documentation
-                # This is a placeholder implementation
-                headers = {"Authorization": f"Bearer {self.api_key}"}
-
                 async with session.post(
-                    self.vision_url,
+                    "https://tooken.club/v1/messages",
                     json=payload,
-                    headers=headers,
+                    headers=self.headers,
                     timeout=aiohttp.ClientTimeout(total=60)
                 ) as response:
                     if response.status == 200:
                         result = await response.json()
-                        logger.info(f"Vision API response: {result}")
+                        logger.info(f"Claude Vision response: {result}")
                         return result
                     else:
                         error_text = await response.text()
-                        logger.error(f"Vision API error {response.status}: {error_text}")
+                        logger.error(f"Claude Vision error {response.status}: {error_text}")
                         return None
 
         except Exception as e:
-            logger.error(f"Error calling Vision API: {e}")
+            logger.error(f"Error calling Claude Vision: {e}")
             return None
 
     async def parse_text_food_description(self, text: str, additional_hints: str = "") -> Optional[Dict[str, Any]]:
