@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: nutrition_db
+    environment:
+      POSTGRES_DB: nutrition_db
+      POSTGRES_USER: nutrition_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - nutrition_network
+    # Изолируем БД - доступна только для бота
+    expose:
+      - "5432"
+
+  bot:
+    build: .
+    container_name: nutrition_bot
+    env_file:
+      - .env
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - nutrition_network
+    # Не пробрасываем порты наружу - бот работает через Telegram API
+
+volumes:
+  postgres_data:
+
+networks:
+  nutrition_network:
+    driver: bridge
+    # Изолированная сеть только для бота и БД
+    internal: false
